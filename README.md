@@ -1,25 +1,28 @@
 # Memory integrity check
-Iterate all non-writable sections with `IMAGE_SCN_MEM_WRITE` in specified module.\
-Hash original bytes of section with `_mm_crc32_u8` once then repeat steps in loop and compare new bytes with `compare_checksums`
+
+Retrieve all non-writable sections with `IMAGE_SCN_MEM_WRITE` flag in specified module then hash original bytes of section via CRC32 instruction \
+Repeat steps in loop and compare new bytes of section via `integrity::check::compare_checksums`
 
 # Example for usage
 ```cpp
-std::int32_t main() {
-	integrity::check check = integrity::check();
+std::int32_t main(int, char **)
+{
+    integrity::check check = integrity::check();
 
-	while (true) {
-		const std::vector<integrity::check::section>& sections = check.compare_checksums(check.retrieve_sections());
+    while (true)
+    {
+        const std::vector<integrity::check::section> &sections = check.compare_checksums(check.retrieve_sections());
 
-		if (sections.size() == std::size_t())
-			std::printf("all sections are good\n");
+        if (!sections.size())
+            std::cout << "all sections are good" << std::endl;
 
-		for (const integrity::check::section& section : sections)
-			std::printf("%s section has been changed\n", section.name);
+        for (const integrity::check::section &section : sections)
+            std::cout << section.name << " section has been changed" << std::endl;
 
-		std::this_thread::sleep_for(std::chrono::milliseconds(500));
-	}
+        std::this_thread::sleep_for(500ms);
+    }
 
-	return EXIT_SUCCESS;
+    return EXIT_SUCCESS;
 }
 ```
 
