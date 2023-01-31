@@ -10,7 +10,7 @@ namespace integrity
     class check
     {
     public:
-        check(const char *module = nullptr)
+        check(const wchar_t *module = nullptr)
             : module(this->get_module_handle_as(module)), sections(this->retrieve_sections()) {}
 
     public:
@@ -81,13 +81,13 @@ namespace integrity
         }
 
     private:
-        static const HMODULE get_module_handle(const char *module = nullptr) noexcept
+        static const HMODULE get_module_handle(const wchar_t *module = nullptr) noexcept
         {
-            return GetModuleHandle(module);
+            return GetModuleHandleW(module);
         }
 
         template <typename type = std::uintptr_t>
-        static const type get_module_handle_as(const char *module = nullptr) noexcept
+        static const type get_module_handle_as(const wchar_t *module = nullptr) noexcept
         {
             return reinterpret_cast<type>(check::get_module_handle(module));
         }
@@ -100,9 +100,25 @@ namespace integrity
         {
             std::uint32_t result = {};
 
+#ifdef WIN32RTLCRC
+#pragma comment(lib, "ntdll")
+            result = RtlCrc32(reinterpret_cast<std::uint8_t*>(data), size, result);
+#else
             for (std::size_t index = {}; index < size; ++index)
-                result = __builtin_ia32_crc32qi(result, reinterpret_cast<std::uint8_t *>(data)[index]);
-
+                /*
+                    ARM64: __crc32b
+                    x86 or AMD64: _mm_crc32_u8
+                */
+#ifdef _M_ARM64
+                result = __crc32b(result, reinterpret_cast<std::uint8_t*>(data)[index]);
+#elif _M_IX86 || _M_AMD64
+                result = _mm_crc32_u8(result, reinterpret_cast<std::uint8_t*>(data)[index]);
+#else
+                result = __builtin_ia32_crc32qi(result, reinterpret_cast<std::uint8_t*>(data)[index]);
+#endif
+            
+#endif
+            
             return result;
         }
 
